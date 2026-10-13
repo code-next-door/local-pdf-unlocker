@@ -1,0 +1,5 @@
+<resources>
+    <!-- Only used before Compose draws the first frame; the real colours come from
+         MaterialTheme in MainActivity. -->
+    <style name="Theme.PdfUnlocker" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

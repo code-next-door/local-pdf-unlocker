@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- An open padlock. 108dp canvas; the shape stays inside the central 66dp safe zone
+     so no launcher mask clips it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Shackle, swung open to the right -->
+    <path
+        android:pathData="M46,50L46,40C46,34 50,30 56,30C62,30 66,34 66,40L66,43"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round" />
+    <!-- Body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,50L70,50Q74,50 74,54L74,74Q74,78 70,78L38,78Q34,78 34,74L34,54Q34,50 38,50Z" />
+</vector>

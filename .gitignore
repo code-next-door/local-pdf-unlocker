@@ -50,3 +50,4 @@ docs/superpowers/
 
 # graphify knowledge graph (local only)
 graphify-out/
+.superpowers/
