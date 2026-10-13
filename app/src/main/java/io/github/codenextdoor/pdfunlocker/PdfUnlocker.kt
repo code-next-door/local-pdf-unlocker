@@ -32,6 +32,10 @@ object PdfUnlocker {
         } catch (_: IOException) {
             pfd.close()
             OpenResult.NotAPdf
+        } catch (_: IllegalArgumentException) {
+            // Not seekable: some apps hand over a stream, which PdfRenderer can't read.
+            pfd.close()
+            OpenResult.NotAPdf
         }
     }
 

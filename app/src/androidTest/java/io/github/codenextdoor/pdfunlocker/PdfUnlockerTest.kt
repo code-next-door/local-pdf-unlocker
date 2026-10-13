@@ -67,6 +67,14 @@ class PdfUnlockerTest {
         assertEquals(OpenResult.NotAPdf, PdfUnlocker.open(openAsset("not-a-pdf.pdf"), null))
     }
 
+    // Some apps hand over a stream (a pipe), which PdfRenderer can't seek in: it throws
+    // IllegalArgumentException. That must be "can't open this", not a crash.
+    @Test fun notSeekableIsNotAPdf() = runTest {
+        val (read, write) = ParcelFileDescriptor.createPipe()
+        write.close()
+        assertEquals(OpenResult.NotAPdf, PdfUnlocker.open(read, null))
+    }
+
     @Test fun originalBytesUnchanged() = runTest {
         val original = copyAsset("user-locked.pdf")
         val opened = PdfUnlocker.open(open(original), "user123") as OpenResult.Opened
