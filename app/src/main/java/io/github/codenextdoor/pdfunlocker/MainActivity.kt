@@ -2,32 +2,54 @@ package io.github.codenextdoor.pdfunlocker
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val context = LocalContext.current
-            // Wallpaper colours exist on every supported version (minSdk 35).
-            val colors = if (isSystemInDarkTheme()) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-            MaterialTheme(colorScheme = colors) {
+            AppTheme {
+                val viewModel: UnlockViewModel = viewModel()
+                val state = viewModel.state
+                // Deliberately not rememberTextFieldState(): that would put the password in saved state.
+                val passwordState = remember { TextFieldState() }
+                val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument(), viewModel::onPicked)
+                val save = rememberLauncherForActivityResult(
+                    ActivityResultContracts.CreateDocument(PDF),
+                    viewModel::onSaveTo,
+                )
+                // Keep the typed password while unlocking (to fix a typo); drop it once past that step.
+                LaunchedEffect(state) {
+                    if (state !is UnlockState.Password && state !is UnlockState.Working) passwordState.clearText()
+                }
                 Scaffold { padding ->
-                    Text(stringResource(R.string.app_name), Modifier.padding(padding))
+                    UnlockScreen(
+                        state = state,
+                        passwordState = passwordState,
+                        onPick = { pick.launch(arrayOf(PDF)) },
+                        onUnlock = { viewModel.onUnlock(passwordState.text.toString()) },
+                        onSave = { save.launch(viewModel.suggestedName) },
+                        onStartOver = viewModel::onStartOver,
+                        modifier = Modifier.padding(padding),
+                    )
                 }
             }
         }
+    }
+
+    private companion object {
+        const val PDF = "application/pdf"
     }
 }

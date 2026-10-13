@@ -63,6 +63,10 @@ labels and content descriptions, not test tags, and assert on what's on screen.
 - Turn on Compose's accessibility checks (Accessibility Test Framework) in UI tests:
   `ui-test-junit4-accessibility` and `enableAccessibilityChecks()` on the rule, so interactions also check
   touch-target size, contrast and missing labels. *(time-sensitive: API added in Compose 1.8)*
+  - In a `createComposeRule` screen test on an emulator, near-white text on a light background **passed**
+    (2026-10): don't count on these checks for contrast; take colours from the theme instead. Shrinking a
+    Material `Button` doesn't fail the touch-target check either (Material pads its touch area to 48 dp).
+    To prove the checks run, remove a button's label (that fails).
 - Run the main screens at **large font scale (e.g. 2.0)** and in dark theme (`DeviceConfigurationOverride`
   or the emulator setting): nothing important may be clipped or pushed off screen without a way to scroll.
 - Automated checks miss a lot. Also try TalkBack on each new screen once.

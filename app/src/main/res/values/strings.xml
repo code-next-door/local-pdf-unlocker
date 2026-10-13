@@ -1,3 +1,19 @@
 <resources>
     <string name="app_name">PDF Unlocker</string>
+    <string name="pick_intro">Pick a PDF to save an unlocked copy of it. Nothing leaves your phone.</string>
+    <string name="pick_button">Pick a PDF</string>
+    <string name="error_not_pdf">This file couldn\'t be opened as a PDF. Pick another file.</string>
+    <string name="error_pick_again">The app was closed while saving. Pick the PDF again.</string>
+    <string name="working">Working…</string>
+    <string name="password_intro">This PDF is locked. Enter its password.</string>
+    <string name="password_label">Password</string>
+    <string name="error_wrong_password">That password didn\'t work. Check it and try again.</string>
+    <string name="unlock_button">Unlock</string>
+    <string name="not_locked">This PDF isn\'t locked. You can still save a copy.</string>
+    <string name="unlocked">Unlocked. Save a copy without the password.</string>
+    <string name="save_button">Save unlocked copy</string>
+    <string name="error_save_failed">Couldn\'t save the copy. Try again, or pick a different place.</string>
+    <string name="saved">Saved. The copy opens without a password.</string>
+    <string name="start_over">Unlock another PDF</string>
+    <string name="cancel">Cancel</string>
 </resources>

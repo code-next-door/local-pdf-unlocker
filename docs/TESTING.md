@@ -21,7 +21,9 @@ this app.
 `PdfRenderer`'s password loading and `write()` exist only on a real Android 15+ runtime, not in Robolectric,
 so unlocking is tested on the emulator.
 
-Device tests (emulator `Pixel_10_b`, API 37):
+Device tests (emulator `Pixel_10_b`, API 37). One class: add
+`-Pandroid.testInstrumentationRunnerArguments.class=io.github.codenextdoor.pdfunlocker.UnlockFlowTest`
+(one class per run: a comma-separated list only ran the first).
 ```bash
 export ANDROID_SERIAL=emulator-5556
 ./gradlew connectedDebugAndroidTest
@@ -44,3 +46,5 @@ This app keeps no data, so `connectedDebugAndroidTest` uninstalling it afterward
 - Owner-password-only PDFs keep their print/edit restrictions (see above). Removing them would need a PDF
   library; the author chose none.
 - A save to a provider that hands out a pipe (some cloud apps) can't be size-checked.
+- The accessibility checks in `UnlockScreenTest` catch missing labels, not contrast (see
+  best-practices/testing-compose-ui.md). Colours come from the theme only.

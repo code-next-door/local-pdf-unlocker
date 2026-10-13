@@ -6,7 +6,11 @@ Pick a PDF; if it's locked, type its password; save an unlocked copy wherever yo
 is never changed.
 
 **Private by design:** everything happens on your phone. The app has no internet permission, so your
-document and its password can't leave the device.
+document and its password can't leave the device. The password is never stored: close the app and it's gone.
+
+**One limit:** some PDFs open without a password but block printing or editing (an "owner password"). The
+copy of such a file still opens anywhere, but keeps those blocks: Android only removes them when the file
+was opened with that owner password.
 
 Android 15 or newer (it uses Android's own PDF engine, no extra libraries).
 
