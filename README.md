@@ -10,7 +10,12 @@ choose **PDF Unlocker** under "Open with", or share the PDF to it. The copy can 
 "Save as" screen offers, including Google Drive: the Drive app does the upload, not this app.
 
 **Private by design:** everything happens on your phone. The app has no internet permission, so your
-document and its password can't leave the device. The password is never stored: close the app and it's gone.
+document and its password can't leave the device.
+
+**Saved passwords:** a password that unlocks a PDF is saved, encrypted with a key kept in your phone's
+security hardware, so the next PDF with the same password (say, next month's bank statement) opens by
+itself: the app tries saved passwords first and only asks if none works. Other apps can't read them, they're
+never backed up, and uninstalling the app deletes them.
 
 **One limit:** some PDFs open without a password but block printing or editing (an "owner password"). The
 copy of such a file still opens anywhere, but keeps those blocks: Android only removes them when the file

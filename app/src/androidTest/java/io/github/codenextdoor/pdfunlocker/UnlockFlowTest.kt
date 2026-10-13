@@ -46,6 +46,8 @@ class UnlockFlowTest {
     fun setUp() {
         Intents.init()
         out.delete()
+        // A saved "user123" would unlock the test PDF by itself and skip the password steps.
+        File(instrumentation.targetContext.filesDir, "saved-passwords.bin").delete()
         rule.enableAccessibilityChecks()
     }
 

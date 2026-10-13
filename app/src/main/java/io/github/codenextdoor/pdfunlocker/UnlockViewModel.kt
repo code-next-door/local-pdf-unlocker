@@ -19,9 +19,13 @@ import kotlinx.coroutines.withContext
 
 sealed interface UnlockState {
     data class Pick(@StringRes val message: Int? = null) : UnlockState
-    data object Working : UnlockState
+    data class Working(@StringRes val message: Int = R.string.working) : UnlockState
     data class Password(val wrong: Boolean = false) : UnlockState
-    data class ReadyToSave(val notLocked: Boolean, val saveFailed: Boolean = false) : UnlockState
+    data class ReadyToSave(
+        val notLocked: Boolean,
+        val saveFailed: Boolean = false,
+        val unlockedWithSaved: Boolean = false,
+    ) : UnlockState
     data object Saved : UnlockState
 }
 
@@ -29,7 +33,9 @@ sealed interface UnlockState {
  * Holds the step and the opened PDF, which must survive rotation but can't go into saved state. After the
  * app is closed in the background it starts over: the password is never kept anywhere.
  */
-class UnlockViewModel(app: Application) : AndroidViewModel(app) {
+class UnlockViewModel(app: Application, private val store: PasswordStore) : AndroidViewModel(app) {
+    constructor(app: Application) : this(app, PasswordStore.forApp(app))
+
     var state: UnlockState by mutableStateOf(UnlockState.Pick())
         private set
     var suggestedName: String = suggestedOutputName(null)
@@ -44,7 +50,7 @@ class UnlockViewModel(app: Application) : AndroidViewModel(app) {
         if (uri == null) return
         closeRenderer()
         picked = uri
-        state = UnlockState.Working
+        state = UnlockState.Working()
         viewModelScope.launch {
             suggestedName = suggestedOutputName(displayName(uri))
             state = when (val result = open(uri, password = null)) {
@@ -52,19 +58,47 @@ class UnlockViewModel(app: Application) : AndroidViewModel(app) {
                     renderer = result.renderer
                     UnlockState.ReadyToSave(notLocked = true)
                 }
-                OpenResult.NeedsPassword, OpenResult.WrongPassword -> UnlockState.Password()
+                OpenResult.NeedsPassword, OpenResult.WrongPassword -> tryStoredPasswords(uri)
                 OpenResult.NotAPdf -> UnlockState.Pick(R.string.error_not_pdf)
             }
         }
     }
 
+    /** Most recently used first; the one that works moves to the top. Nothing found → ask. */
+    private suspend fun tryStoredPasswords(uri: Uri): UnlockState {
+        val saved = store.load()
+        if (saved.isEmpty()) return UnlockState.Password()
+        state = UnlockState.Working(R.string.trying_saved)
+        for (password in saved) {
+            when (val result = open(uri, password)) {
+                is OpenResult.Opened -> {
+                    renderer = result.renderer
+                    rememberPassword(password)
+                    return UnlockState.ReadyToSave(notLocked = false, unlockedWithSaved = true)
+                }
+                OpenResult.NotAPdf -> return UnlockState.Pick(R.string.error_not_pdf)
+                else -> Unit
+            }
+        }
+        return UnlockState.Password()
+    }
+
+    /** Best-effort: a password that couldn't be saved must not fail the unlock. */
+    private suspend fun rememberPassword(password: String) {
+        try {
+            store.remember(password)
+        } catch (_: Exception) {
+        }
+    }
+
     fun onUnlock(password: String) {
         val uri = picked ?: run { state = UnlockState.Pick(R.string.error_pick_again); return }
-        state = UnlockState.Working
+        state = UnlockState.Working()
         viewModelScope.launch {
             state = when (val result = open(uri, password)) {
                 is OpenResult.Opened -> {
                     renderer = result.renderer
+                    rememberPassword(password)
                     UnlockState.ReadyToSave(notLocked = false)
                 }
                 OpenResult.NeedsPassword, OpenResult.WrongPassword -> UnlockState.Password(wrong = true)
@@ -77,8 +111,8 @@ class UnlockViewModel(app: Application) : AndroidViewModel(app) {
     fun onSaveTo(uri: Uri?) {
         if (uri == null) return
         val opened = renderer ?: run { state = UnlockState.Pick(R.string.error_pick_again); return }
-        val notLocked = (state as? UnlockState.ReadyToSave)?.notLocked ?: false
-        state = UnlockState.Working
+        val ready = state as? UnlockState.ReadyToSave ?: UnlockState.ReadyToSave(notLocked = false)
+        state = UnlockState.Working()
         viewModelScope.launch {
             state = try {
                 withContext(Dispatchers.IO) {
@@ -91,7 +125,7 @@ class UnlockViewModel(app: Application) : AndroidViewModel(app) {
                 // IOException, SecurityException or IllegalArgumentException from the provider. Don't
                 // leave a broken copy behind (file:// test Uris aren't documents: nothing to delete there).
                 withContext(Dispatchers.IO) { runCatching { DocumentsContract.deleteDocument(resolver, uri) } }
-                UnlockState.ReadyToSave(notLocked, saveFailed = true)
+                ready.copy(saveFailed = true)
             }
         }
     }

@@ -10,7 +10,6 @@ import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
@@ -41,6 +40,8 @@ class UnlockScreenTest {
         UnlockState.ReadyToSave(notLocked = true) to R.string.not_locked,
         UnlockState.ReadyToSave(notLocked = false) to R.string.unlocked,
         UnlockState.ReadyToSave(notLocked = false, saveFailed = true) to R.string.error_save_failed,
+        UnlockState.ReadyToSave(notLocked = false, unlockedWithSaved = true) to R.string.unlocked_with_saved,
+        UnlockState.Working(R.string.trying_saved) to R.string.trying_saved,
         UnlockState.Saved to R.string.saved,
     )
 
@@ -65,8 +66,8 @@ class UnlockScreenTest {
                 rule.onNodeWithText(context.getString(text)).performScrollTo().assertIsDisplayed()
                 rule.onRoot().tryPerformAccessibilityChecks()
             }
-            state = UnlockState.Working
-            rule.onNodeWithContentDescription(context.getString(R.string.working)).assertIsDisplayed()
+            state = UnlockState.Working()
+            rule.onNodeWithText(context.getString(R.string.working)).assertIsDisplayed()
             rule.onRoot().tryPerformAccessibilityChecks()
         }
     }

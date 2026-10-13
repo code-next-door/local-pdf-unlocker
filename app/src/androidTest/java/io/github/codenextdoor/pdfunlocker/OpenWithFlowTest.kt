@@ -50,6 +50,8 @@ class OpenWithFlowTest {
     }
 
     private fun launch(intent: Intent, steps: (ActivityScenario<MainActivity>) -> Unit) {
+        // A saved "user123" would unlock the test PDF by itself and skip the password step.
+        java.io.File(context.filesDir, "saved-passwords.bin").delete()
         intent.setClassName(context, MainActivity::class.java.name)
         ActivityScenario.launch<MainActivity>(intent).use(steps)
     }

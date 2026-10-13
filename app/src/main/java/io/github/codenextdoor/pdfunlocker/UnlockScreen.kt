@@ -23,7 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -61,9 +61,10 @@ fun UnlockScreen(
                 Text(stringResource(R.string.pick_intro))
                 Button(onClick = onPick) { Text(stringResource(R.string.pick_button)) }
             }
-            UnlockState.Working -> {
-                val working = stringResource(R.string.working)
-                CircularProgressIndicator(Modifier.semantics { contentDescription = working })
+            is UnlockState.Working -> {
+                // The text says what's happening; the spinner itself stays silent for screen readers.
+                CircularProgressIndicator(Modifier.clearAndSetSemantics {})
+                Text(stringResource(state.message))
             }
             is UnlockState.Password -> {
                 Icon(painterResource(R.drawable.ic_lock), contentDescription = null)
@@ -85,7 +86,12 @@ fun UnlockScreen(
                 TextButton(onClick = onStartOver) { Text(stringResource(R.string.cancel)) }
             }
             is UnlockState.ReadyToSave -> {
-                Text(stringResource(if (state.notLocked) R.string.not_locked else R.string.unlocked))
+                val message = when {
+                    state.notLocked -> R.string.not_locked
+                    state.unlockedWithSaved -> R.string.unlocked_with_saved
+                    else -> R.string.unlocked
+                }
+                Text(stringResource(message))
                 if (state.saveFailed) ErrorText(R.string.error_save_failed)
                 Button(onClick = onSave) { Text(stringResource(R.string.save_button)) }
                 TextButton(onClick = onStartOver) { Text(stringResource(R.string.cancel)) }
