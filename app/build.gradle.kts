@@ -37,12 +37,11 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
-            )
+            // R8: shrinks, optimizes and obfuscates code and removes unused resources (AGP 9.3+ DSL,
+            // default Android keep rules included). Own keep rules would go in src/main/keepRules/*.keep.
+            optimization {
+                enable = true
+            }
             signingConfig = signingConfigs.findByName("release")
         }
         // Shrunk exactly like release, but signed with the debug key and installed as a
