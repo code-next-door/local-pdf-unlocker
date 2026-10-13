@@ -24,7 +24,12 @@ was opened with that owner password.
 
 Android 15 or newer (it uses Android's own PDF engine, no extra libraries).
 
-> Work in progress: no release yet.
+## Install
+
+Download `pdf-unlocker-<version>.apk` from the
+[latest release](https://github.com/code-next-door/local-pdf-unlocker/releases/latest) on your phone and open
+it. Android asks you to allow installs from your browser or file manager once. Each release lists the file's
+SHA-256 checksum.
 
 ## Build from source
 
