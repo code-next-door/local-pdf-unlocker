@@ -75,16 +75,15 @@ kotlin {
 }
 
 dependencies {
+    // Not imported directly: declared so the app gets current AndroidX core and lifecycle
+    // (activity-compose alone would bring core 1.18 and lifecycle 2.9).
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    debugImplementation(libs.androidx.compose.ui.tooling)
 
     // Declared so the app ships the same coroutines version the tests compile against
     // (otherwise AndroidX pulls an older one and device tests fail with NoSuchMethodError).
