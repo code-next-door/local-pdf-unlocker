@@ -15,11 +15,14 @@ import org.json.JSONArray
 class PasswordStore(private val file: File, private val box: SecretBox) {
     private val mutex = Mutex()
 
-    /** True once load() found a file it couldn't read and cleared it (shown once on the list). */
+    /** Whether the last load() found a file it couldn't read and cleared it (shown once on the list). */
     var wasCleared: Boolean = false
         private set
 
-    suspend fun load(): List<String> = mutex.withLock { read() }
+    suspend fun load(): List<String> = mutex.withLock {
+        wasCleared = false
+        read()
+    }
 
     /** Adds [password] at the top, or moves it there if it's already saved. */
     suspend fun remember(password: String) = mutex.withLock { write(listOf(password) + (read() - password)) }

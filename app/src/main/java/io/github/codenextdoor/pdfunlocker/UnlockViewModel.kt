@@ -41,6 +41,12 @@ class UnlockViewModel(app: Application, private val store: PasswordStore) : Andr
     var suggestedName: String = suggestedOutputName(null)
         private set
 
+    /** The decrypted list while it's open on screen (after the phone's lock); null otherwise. */
+    var savedPasswords: List<String>? by mutableStateOf(null)
+        private set
+    var savedCleared: Boolean by mutableStateOf(false)
+        private set
+
     private var picked: Uri? = null
     private var renderer: PdfRenderer? = null
     private val resolver get() = getApplication<Application>().contentResolver
@@ -130,9 +136,47 @@ class UnlockViewModel(app: Application, private val store: PasswordStore) : Andr
         }
     }
 
-    /** Another app sent something this app can't open (no file, or not a content:// Uri). */
-    fun showNotAPdf() {
-        state = UnlockState.Pick(R.string.error_not_pdf)
+    /** Back to the start with [message], e.g. another app sent something this app can't open. */
+    fun showMessage(@StringRes message: Int) {
+        state = UnlockState.Pick(message)
+    }
+
+    /** Only after the phone's lock was passed. */
+    fun openSavedPasswords() {
+        viewModelScope.launch {
+            val list = store.load()
+            savedCleared = store.wasCleared
+            savedPasswords = list
+        }
+    }
+
+    fun closeSavedPasswords() {
+        savedPasswords = null
+        savedCleared = false
+    }
+
+    fun addSavedPassword(password: String) {
+        if (password.isEmpty()) return
+        viewModelScope.launch {
+            rememberPassword(password)
+            refreshSavedPasswords()
+        }
+    }
+
+    fun deleteSavedPassword(password: String) {
+        viewModelScope.launch {
+            try {
+                store.remove(password)
+            } catch (_: Exception) {
+            }
+            refreshSavedPasswords()
+        }
+    }
+
+    // Only while the list is still open: if it was closed meanwhile (app left), it stays closed.
+    private suspend fun refreshSavedPasswords() {
+        val list = store.load()
+        if (savedPasswords != null) savedPasswords = list
     }
 
     fun onStartOver() {

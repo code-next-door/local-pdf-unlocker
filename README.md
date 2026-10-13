@@ -15,7 +15,8 @@ document and its password can't leave the device.
 **Saved passwords:** a password that unlocks a PDF is saved, encrypted with a key kept in your phone's
 security hardware, so the next PDF with the same password (say, next month's bank statement) opens by
 itself: the app tries saved passwords first and only asks if none works. Other apps can't read them, they're
-never backed up, and uninstalling the app deletes them.
+never backed up, and uninstalling the app deletes them. **Saved passwords** on the start screen lists them
+(after your phone's fingerprint, face or PIN), where you can add or delete one.
 
 **One limit:** some PDFs open without a password but block printing or editing (an "owner password"). The
 copy of such a file still opens anywhere, but keeps those blocks: Android only removes them when the file

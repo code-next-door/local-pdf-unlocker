@@ -14,6 +14,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,6 +40,7 @@ fun UnlockScreen(
     onUnlock: () -> Unit,
     onSave: () -> Unit,
     onStartOver: () -> Unit,
+    onSavedPasswords: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -60,6 +62,7 @@ fun UnlockScreen(
                 state.message?.let { ErrorText(it) }
                 Text(stringResource(R.string.pick_intro))
                 Button(onClick = onPick) { Text(stringResource(R.string.pick_button)) }
+                OutlinedButton(onClick = onSavedPasswords) { Text(stringResource(R.string.saved_passwords)) }
             }
             is UnlockState.Working -> {
                 // The text says what's happening; the spinner itself stays silent for screen readers.
@@ -107,7 +110,7 @@ fun UnlockScreen(
 
 /** Read out by screen readers as soon as it appears. */
 @Composable
-private fun ErrorText(message: Int) {
+internal fun ErrorText(message: Int) {
     Text(
         stringResource(message),
         color = MaterialTheme.colorScheme.error,

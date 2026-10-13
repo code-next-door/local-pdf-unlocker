@@ -18,4 +18,14 @@
     <string name="saved">Saved. The copy opens without a password.</string>
     <string name="start_over">Unlock another PDF</string>
     <string name="cancel">Cancel</string>
+    <string name="saved_passwords">Saved passwords</string>
+    <string name="saved_passwords_empty">No saved passwords yet. Passwords that unlock a PDF are added here.</string>
+    <string name="add_password_label">Add a password</string>
+    <string name="add_button">Add</string>
+    <string name="delete">Delete</string>
+    <string name="delete_confirm">Delete this saved password?</string>
+    <string name="done">Done</string>
+    <string name="prompt_title">Show saved passwords</string>
+    <string name="no_screen_lock">Set a screen lock in your phone\'s settings to see saved passwords.</string>
+    <string name="saved_cleared">Saved passwords couldn\'t be read and were cleared.</string>
 </resources>

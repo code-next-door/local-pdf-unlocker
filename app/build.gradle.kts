@@ -77,8 +77,6 @@ kotlin {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
-    // Keeps the opened PDF across rotation (a PdfRenderer can't go into saved state).
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
 
     implementation(platform(libs.androidx.compose.bom))
@@ -113,5 +111,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.espresso.core)
     // Stubs the system file pickers in UI tests.
     androidTestImplementation(libs.androidx.test.espresso.intents)
+    // Types the PIN into the system's fingerprint/PIN prompt (another app's window) in UI tests.
+    androidTestImplementation(libs.androidx.test.uiautomator)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

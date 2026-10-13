@@ -54,7 +54,7 @@ class UnlockScreenTest {
             DeviceConfigurationOverride(DeviceConfigurationOverride.FontScale(2f)) {
                 AppTheme(darkTheme = dark) {
                     Surface {
-                        UnlockScreen(state, remember { TextFieldState() }, onPick = {}, onUnlock = {}, onSave = {}, onStartOver = {})
+                        UnlockScreen(state, remember { TextFieldState() }, onPick = {}, onUnlock = {}, onSave = {}, onStartOver = {}, onSavedPasswords = {})
                     }
                 }
             }
