@@ -30,7 +30,17 @@ This app keeps no data, so `connectedDebugAndroidTest` uninstalling it afterward
 
 ## Fixtures
 - `app/src/androidTest/assets/`: small PDFs made for the tests (plain, user-password locked, owner-password
-  only). How each was made is noted next to it, so they can be rebuilt.
+  only, not a PDF). How each was made, with the `qpdf` commands to rebuild them:
+  [FIXTURES.md](../app/src/androidTest/assets/FIXTURES.md).
+
+## What PdfRenderer really does (checked on API 37, 2026-10-14)
+- `write(out, removePasswordProtection = true)` removes encryption only if the file was opened **with a
+  password**. A PDF with only an owner password (print/edit restrictions) opens without one, and its copy
+  keeps the restrictions. The copy still opens anywhere without a password.
+- `write()` closes `out` itself and **stays silent when it can't write** (it leaves an empty file).
+  `PdfUnlocker.save` checks the size through a `dup()` of the descriptor; pipes report -1 and can't be checked.
 
 ## Known gaps
-- (none yet)
+- Owner-password-only PDFs keep their print/edit restrictions (see above). Removing them would need a PDF
+  library; the author chose none.
+- A save to a provider that hands out a pipe (some cloud apps) can't be size-checked.
