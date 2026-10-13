@@ -30,8 +30,16 @@ public class TestPdfProvider extends ContentProvider {
         return true;
     }
 
+    /** {@code …/stream/<asset>}: served through a pipe, like apps that stream an attachment. */
+    public static Uri streamUri(String asset) {
+        return Uri.parse("content://" + AUTHORITY + "/stream/" + asset);
+    }
+
     @Override public ParcelFileDescriptor openFile(Uri uri, String mode) throws FileNotFoundException {
         String name = uri.getLastPathSegment();
+        if (uri.getPathSegments().size() == 2 && "stream".equals(uri.getPathSegments().get(0))) {
+            return stream(name);
+        }
         File file = new File(getContext().getCacheDir(), name);
         try (InputStream in = getContext().getAssets().open(name); OutputStream out = new FileOutputStream(file)) {
             in.transferTo(out);
@@ -39,6 +47,24 @@ public class TestPdfProvider extends ContentProvider {
             throw new FileNotFoundException(e.getMessage());
         }
         return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
+    }
+
+    private ParcelFileDescriptor stream(String name) throws FileNotFoundException {
+        try {
+            ParcelFileDescriptor[] pipe = ParcelFileDescriptor.createPipe();
+            InputStream in = getContext().getAssets().open(name);
+            new Thread(() -> {
+                try (InputStream from = in;
+                     OutputStream to = new ParcelFileDescriptor.AutoCloseOutputStream(pipe[1])) {
+                    from.transferTo(to);
+                } catch (IOException ignored) {
+                    // The reader went away; nothing to clean up beyond the closed streams.
+                }
+            }).start();
+            return pipe[0];
+        } catch (IOException e) {
+            throw new FileNotFoundException(e.getMessage());
+        }
     }
 
     @Override public Cursor query(Uri uri, String[] projection, String selection, String[] args, String sort) {

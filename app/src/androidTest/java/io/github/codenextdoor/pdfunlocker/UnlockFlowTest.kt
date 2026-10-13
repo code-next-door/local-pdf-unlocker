@@ -83,6 +83,31 @@ class UnlockFlowTest {
         assertOpensWithoutPassword(out)
     }
 
+    // The private copy of the picked PDF (cacheDir/pdfs) doesn't outlive its use.
+    @Test
+    fun noPrivateCopyLeftAfterSaving() {
+        stubPick("plain.pdf")
+        tap(R.string.pick_button)
+        waitFor(R.string.not_locked)
+        stubSave(out)
+        tap(R.string.save_button)
+        waitFor(R.string.saved)
+        assertNoPrivateCopy()
+    }
+
+    @Test
+    fun noPrivateCopyLeftAfterCancel() {
+        stubPick("plain.pdf")
+        tap(R.string.pick_button)
+        waitFor(R.string.not_locked)
+        tap(R.string.cancel)
+        waitFor(R.string.pick_intro)
+        assertNoPrivateCopy()
+    }
+
+    private fun assertNoPrivateCopy() =
+        assertEquals(emptyList<String>(), File(cacheDir, "pdfs").list()?.toList().orEmpty())
+
     @Test
     fun notAPdfGoesBackToPick() {
         stubPick("not-a-pdf.pdf")

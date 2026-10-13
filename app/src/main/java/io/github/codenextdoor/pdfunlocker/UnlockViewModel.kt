@@ -3,6 +3,7 @@ package io.github.codenextdoor.pdfunlocker
 import android.app.Application
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import androidx.annotation.StringRes
@@ -11,8 +12,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,36 +50,54 @@ class UnlockViewModel(app: Application, private val store: PasswordStore) : Andr
     var savedCleared: Boolean by mutableStateOf(false)
         private set
 
-    private var picked: Uri? = null
+    /**
+     * The app's own copy of the chosen PDF (still locked), in its private cache: PdfRenderer can't read the
+     * streams some apps hand over, and the original is never read again once copied.
+     */
+    private var copy: File? = null
     private var renderer: PdfRenderer? = null
     private val resolver get() = getApplication<Application>().contentResolver
+    private val copiesDir = File(app.cacheDir, "pdfs")
+
+    init {
+        // Copies left by a crash or by Android closing the app; only once per process, so a second window
+        // (e.g. "Open with" from Gmail) doesn't delete the first one's copy.
+        if (!staleCopiesCleared) {
+            staleCopiesCleared = true
+            copiesDir.deleteRecursively()
+        }
+    }
 
     /** [uri] null: the picker was cancelled. */
     fun onPicked(uri: Uri?) {
         if (uri == null) return
-        closeRenderer()
-        picked = uri
+        endSession()
         state = UnlockState.Working()
         viewModelScope.launch {
             suggestedName = suggestedOutputName(displayName(uri))
-            state = when (val result = open(uri, password = null)) {
+            val file = copyIn(uri) ?: run {
+                state = UnlockState.Pick(R.string.error_not_pdf)
+                return@launch
+            }
+            copy = file
+            state = when (val result = open(file, password = null)) {
                 is OpenResult.Opened -> {
                     renderer = result.renderer
                     UnlockState.ReadyToSave(notLocked = true)
                 }
-                OpenResult.NeedsPassword, OpenResult.WrongPassword -> tryStoredPasswords(uri)
+                OpenResult.NeedsPassword, OpenResult.WrongPassword -> tryStoredPasswords(file)
                 OpenResult.NotAPdf -> UnlockState.Pick(R.string.error_not_pdf)
             }
         }
     }
 
     /** Most recently used first; the one that works moves to the top. Nothing found → ask. */
-    private suspend fun tryStoredPasswords(uri: Uri): UnlockState {
+    private suspend fun tryStoredPasswords(file: File): UnlockState {
         val saved = store.load()
         if (saved.isEmpty()) return UnlockState.Password()
         state = UnlockState.Working(R.string.trying_saved)
         for (password in saved) {
-            when (val result = open(uri, password)) {
+            when (val result = open(file, password)) {
                 is OpenResult.Opened -> {
                     renderer = result.renderer
                     rememberPassword(password)
@@ -98,10 +119,10 @@ class UnlockViewModel(app: Application, private val store: PasswordStore) : Andr
     }
 
     fun onUnlock(password: String) {
-        val uri = picked ?: run { state = UnlockState.Pick(R.string.error_pick_again); return }
+        val file = copy ?: run { state = UnlockState.Pick(R.string.error_pick_again); return }
         state = UnlockState.Working()
         viewModelScope.launch {
-            state = when (val result = open(uri, password)) {
+            state = when (val result = open(file, password)) {
                 is OpenResult.Opened -> {
                     renderer = result.renderer
                     rememberPassword(password)
@@ -125,7 +146,7 @@ class UnlockViewModel(app: Application, private val store: PasswordStore) : Andr
                     val out = resolver.openFileDescriptor(uri, "wt") ?: throw FileNotFoundException()
                     out.use { PdfUnlocker.save(opened, it) }
                 }
-                closeRenderer()
+                endSession()
                 UnlockState.Saved
             } catch (_: Exception) {
                 // IOException, SecurityException or IllegalArgumentException from the provider. Don't
@@ -180,24 +201,40 @@ class UnlockViewModel(app: Application, private val store: PasswordStore) : Andr
     }
 
     fun onStartOver() {
-        closeRenderer()
-        picked = null
+        endSession()
         state = UnlockState.Pick()
     }
 
-    override fun onCleared() = closeRenderer()
+    override fun onCleared() = endSession()
 
-    private fun closeRenderer() {
+    /** Closes the opened PDF and deletes the private copy. */
+    private fun endSession() {
         renderer?.close()
         renderer = null
+        copy?.delete()
+        copy = null
     }
 
-    private suspend fun open(uri: Uri, password: String?): OpenResult {
+    /** Copies [uri] byte for byte into the private cache; null if it can't be read (gone, no permission, full). */
+    private suspend fun copyIn(uri: Uri): File? = withContext(Dispatchers.IO) {
+        val file = File(copiesDir, "${UUID.randomUUID()}.pdf")
+        try {
+            copiesDir.mkdirs()
+            val input = resolver.openInputStream(uri) ?: return@withContext null
+            input.use { from -> file.outputStream().use { from.copyTo(it) } }
+            file
+        } catch (_: Exception) {
+            file.delete()
+            null
+        }
+    }
+
+    private suspend fun open(file: File, password: String?): OpenResult {
         val pfd = withContext(Dispatchers.IO) {
             try {
-                resolver.openFileDescriptor(uri, "r")
+                ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
             } catch (_: Exception) {
-                null // Gone, no permission, or not a file: all mean "can't open this".
+                null
             }
         } ?: return OpenResult.NotAPdf
         return PdfUnlocker.open(pfd, password)
@@ -209,5 +246,9 @@ class UnlockViewModel(app: Application, private val store: PasswordStore) : Andr
                 if (it.moveToFirst()) it.getString(0) else null
             }
         }.getOrNull() ?: uri.lastPathSegment
+    }
+
+    private companion object {
+        @Volatile var staleCopiesCleared = false
     }
 }

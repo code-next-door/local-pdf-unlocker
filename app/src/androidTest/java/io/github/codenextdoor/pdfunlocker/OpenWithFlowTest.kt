@@ -35,6 +35,12 @@ class OpenWithFlowTest {
         Intent(Intent.ACTION_SEND).setType("application/pdf").putExtra(Intent.EXTRA_STREAM, TestPdfProvider.uri("user-locked.pdf")),
     ) { unlockWithRightPassword() }
 
+    // Some apps hand over a stream, which PdfRenderer can't read directly: the app reads a private copy.
+    @Test
+    fun streamedPdfOpens() = launch(
+        Intent(Intent.ACTION_VIEW).setDataAndType(TestPdfProvider.streamUri("user-locked.pdf"), "application/pdf"),
+    ) { unlockWithRightPassword() }
+
     @Test
     fun fileUriIsRefused() = launch(
         Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse("file:///sdcard/a.pdf"), "application/pdf"),

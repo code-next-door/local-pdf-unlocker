@@ -41,6 +41,12 @@ This app keeps no data, so `connectedDebugAndroidTest` uninstalling it afterward
   clear it by hand: `adb shell locksettings clear --old 1357`.
 - `PasswordStoreTest`/`SecretBoxTest` use their own file and Keystore alias and delete both afterwards.
 
+## Private copies and streams
+- The app copies every incoming PDF to `cacheDir/pdfs/` and reads only that copy; tests check the folder is
+  empty after saving and after Cancel.
+- `TestPdfProvider` (test APK) serves `content://io.github.codenextdoor.pdfunlocker.test.pdfs/<asset>` as a file
+  and `…/stream/<asset>` through a pipe, like apps that stream an attachment.
+
 ## Fixtures
 - `app/src/androidTest/assets/`: small PDFs made for the tests (plain, user-password locked, owner-password
   only, not a PDF). How each was made, with the `qpdf` commands to rebuild them:
