@@ -5,6 +5,10 @@ A small Android app that removes the password from a PDF you already know the pa
 Pick a PDF; if it's locked, type its password; save an unlocked copy wherever you like. The original file
 is never changed.
 
+You can also start from another app: tap a PDF attachment in your email (or a file in Files or Drive) and
+choose **PDF Unlocker** under "Open with", or share the PDF to it. The copy can be saved anywhere Android's
+"Save as" screen offers, including Google Drive: the Drive app does the upload, not this app.
+
 **Private by design:** everything happens on your phone. The app has no internet permission, so your
 document and its password can't leave the device. The password is never stored: close the app and it's gone.
 

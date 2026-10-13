@@ -96,6 +96,11 @@ class UnlockViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Another app sent something this app can't open (no file, or not a content:// Uri). */
+    fun showNotAPdf() {
+        state = UnlockState.Pick(R.string.error_not_pdf)
+    }
+
     fun onStartOver() {
         closeRenderer()
         picked = null

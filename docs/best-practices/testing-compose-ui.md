@@ -12,6 +12,10 @@ labels and content descriptions, not test tags, and assert on what's on screen.
   installDebugAndroidTest` then `adb shell am instrument -w …`. (`connectedAndroidTest` uninstalls afterwards.)
 - One shared base class with helpers: switch tab, find field by exact or partial label, stub the system file
   pickers with Espresso-Intents, wait-with-timeout that logs the screen on failure.
+- Testing "Open with"/Share needs a `content://` Uri from another app: a small `ContentProvider` in
+  `androidTest/AndroidManifest.xml` serving the test assets does it. **Write it in Java**: it runs in the test
+  APK's own process, which has no Kotlin standard library (the build leaves it out since the app has it), and
+  a Kotlin provider dies with `NoClassDefFoundError: kotlin/jvm/internal/Intrinsics`.
 - Test-only code still needs compiling: run `compileDebugAndroidTestKotlin` before committing a device-test
   edit (a missing import once failed a gate's install step silently).
 

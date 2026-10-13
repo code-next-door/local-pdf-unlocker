@@ -22,6 +22,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             AppTheme {
                 val viewModel: UnlockViewModel = viewModel()
+                // A PDF from another app ("Open with", Share). Only on a fresh start: after a rotation the
+                // ViewModel already has it.
+                LaunchedEffect(Unit) {
+                    if (savedInstanceState == null && isIncomingFile(intent)) {
+                        incomingPdfUri(intent)?.let(viewModel::onPicked) ?: viewModel.showNotAPdf()
+                    }
+                }
                 val state = viewModel.state
                 // Deliberately not rememberTextFieldState(): that would put the password in saved state.
                 val passwordState = remember { TextFieldState() }
