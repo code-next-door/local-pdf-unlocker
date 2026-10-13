@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Serves the test PDFs as content:// Uris, as Gmail or Files hand them to the app. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- shortcut: exported without a permission; this APK is only ever installed for tests. -->
+        <provider
+            android:name="io.github.codenextdoor.pdfunlocker.releasetest.PdfProvider"
+            android:authorities="io.github.codenextdoor.pdfunlocker.releasetest.pdfs"
+            android:exported="true" />
+    </application>
+</manifest>
