@@ -15,7 +15,8 @@ this app.
 |---|---|---|---|
 | Pure logic | `app/src/test` | `./gradlew testDebugUnitTest` | Anything without Android's PDF APIs (e.g. the suggested file name) |
 | Unlocking | `app/src/androidTest` | see below | `PdfRenderer` on a real device: locked / wrong password / right password / saved copy opens without one |
-| UI flow | `app/src/androidTest` | see below | Pick → password → save, with the system pickers stubbed (Espresso-Intents) |
+| UI flow | `app/src/androidTest` | see below | Pick → password → save, with the system pickers stubbed (Espresso-Intents); saved passwords; the list behind the real system prompt |
+| Release build | `releasetest/` | `./gradlew :releasetest:connectedMinifiedAndroidTest` | The R8-shrunk app from outside (UI Automator): open with, unlock, remembered password |
 | Lint | app + test code | `./gradlew lintDebug` | API-level crashes, string format errors |
 
 `PdfRenderer`'s password loading and `write()` exist only on a real Android 15+ runtime, not in Robolectric,
@@ -29,6 +30,16 @@ export ANDROID_SERIAL=emulator-5556
 ./gradlew connectedDebugAndroidTest
 ```
 This app keeps no data, so `connectedDebugAndroidTest` uninstalling it afterwards is fine.
+
+## Saved passwords in tests
+- The store is one file, `filesDir/saved-passwords.bin`. Every UI test that opens `user-locked.pdf` deletes it
+  in `@Before`: a remembered `user123` would unlock the PDF by itself and skip the password steps.
+  `releasetest` runs `pm clear` on the minified app instead.
+- `SavedPasswordsFlowTest` drives the **real** system fingerprint/PIN prompt: it sets a throwaway PIN
+  (`locksettings set-pin 1357`) on the test emulator and clears it afterwards (and first, in case a run died).
+  On API 37 the prompt is a PIN pad (`cred_pin_pad`, digit buttons, `key_enter`). If a run is killed half-way,
+  clear it by hand: `adb shell locksettings clear --old 1357`.
+- `PasswordStoreTest`/`SecretBoxTest` use their own file and Keystore alias and delete both afterwards.
 
 ## Fixtures
 - `app/src/androidTest/assets/`: small PDFs made for the tests (plain, user-password locked, owner-password

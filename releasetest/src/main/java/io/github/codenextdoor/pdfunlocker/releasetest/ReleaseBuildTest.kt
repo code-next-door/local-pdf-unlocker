@@ -26,7 +26,8 @@ class ReleaseBuildTest {
 
     @Before
     fun freshStart() {
-        device.executeShellCommand("am force-stop $PACKAGE")
+        // Wipes the minified copy's saved passwords too, as if it had just been installed.
+        device.executeShellCommand("pm clear $PACKAGE")
     }
 
     @Test
@@ -46,6 +47,19 @@ class ReleaseBuildTest {
         find(By.text("Unlock")).click()
         find(By.text("Unlocked. Save a copy without the password."))
         find(By.text("Save unlocked copy"))
+    }
+
+    /** The Keystore-sealed list and its JSON survive R8: a typed password unlocks the PDF by itself next time. */
+    @Test
+    fun remembersAPasswordForNextTime() {
+        openWith("user-locked.pdf")
+        find(By.text("This PDF is locked. Enter its password."))
+        passwordField().text = "user123"
+        find(By.text("Unlock")).click()
+        find(By.text("Unlocked. Save a copy without the password."))
+        device.executeShellCommand("am force-stop $PACKAGE")
+        openWith("user-locked.pdf")
+        find(By.text("Unlocked with a saved password. Save a copy without the password."))
     }
 
     @Test
