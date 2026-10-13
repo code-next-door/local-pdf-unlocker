@@ -1,0 +1,4 @@
+# Private files copied into new Claude worktrees (all gitignored).
+CLAUDE.md
+.claude/maintenance-log.md
+local.properties
