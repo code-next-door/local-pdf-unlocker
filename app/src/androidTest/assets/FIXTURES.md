@@ -19,5 +19,6 @@ trailer << /Size 5 /Root 1 0 R >>
 |---|---|---|
 | `plain.pdf` | `qpdf hand.pdf plain.pdf` (rebuilds the missing xref; warns, fine) | 2 pages, not encrypted |
 | `user-locked.pdf` | `qpdf --encrypt user123 owner456 256 -- plain.pdf user-locked.pdf` | needs password `user123` to open |
+| `user-locked-big.pdf` | `qpdf --empty --pages plain.pdf ×200 -- big.pdf` (plain.pdf listed 200 times), then `qpdf --encrypt user123 owner456 256 -- big.pdf user-locked-big.pdf` | 400 pages, password `user123`; for saving over the original |
 | `owner-only.pdf` | `qpdf --encrypt "" owner456 256 --print=none --modify=none -- plain.pdf owner-only.pdf` | opens without a password; printing/editing restricted |
 | `not-a-pdf.pdf` | `printf 'this is not a pdf\n' > not-a-pdf.pdf` | not a PDF |

@@ -71,6 +71,20 @@ class PasswordStoreTest {
         assertTrue(store.wasCleared)
     }
 
+    // A passing Keystore problem (it reports some as transient) must not cost the whole list.
+    @Test fun keystoreErrorKeepsTheFile() = runTest {
+        store.remember("a")
+        val flaky = PasswordStore(file, object : SecretBox {
+            override fun seal(secret: ByteArray) = throw java.security.KeyStoreException("busy")
+            override fun open(sealed: String) = throw java.security.KeyStoreException("busy")
+        })
+        assertEquals(emptyList<String>(), flaky.load())
+        assertTrue(file.exists())
+        assertFalse(flaky.wasCleared)
+        assertTrue(runCatching { flaky.remember("b") }.isFailure)
+        assertEquals(listOf("a"), store.load())
+    }
+
     @Test fun noTempFileLeftAfterSave() = runTest {
         store.remember("a")
         assertEquals(listOf(file.name), dir.list()!!.toList())

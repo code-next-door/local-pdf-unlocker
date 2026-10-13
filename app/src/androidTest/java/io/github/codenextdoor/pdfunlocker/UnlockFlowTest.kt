@@ -142,6 +142,25 @@ class UnlockFlowTest {
         assertOpensWithoutPassword(out)
     }
 
+    // Choosing the original itself in "Save as" (to replace the locked file) must give a good unlocked
+    // copy, not an emptied or broken original.
+    @Test
+    fun saveOverTheOriginalReplacesItWithTheUnlockedCopy() {
+        // Big enough that PdfRenderer still reads the original while writing (a tiny file is read at once).
+        stubPick("user-locked-big.pdf")
+        tap(R.string.pick_button)
+        waitFor(R.string.password_intro)
+        typePassword("user123")
+        tap(R.string.unlock_button)
+        waitFor(R.string.unlocked)
+        stubSave(File(cacheDir, "user-locked-big.pdf"))
+        tap(R.string.save_button)
+        waitFor(R.string.saved)
+        PdfRenderer(ParcelFileDescriptor.open(File(cacheDir, "user-locked-big.pdf"), ParcelFileDescriptor.MODE_READ_ONLY)).use {
+            assertEquals(400, it.pageCount)
+        }
+    }
+
     @Test
     fun saveWithoutOpenFileAsksToPickAgain() {
         // As after the app was closed while the "Save as" dialog was open: the opened file is gone.

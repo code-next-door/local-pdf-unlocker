@@ -105,6 +105,24 @@ class SavedPasswordsFlowTest {
         waitForText("user123")
     }
 
+    // Android snapshots the screen for Recents before onStop closes the list: the window must be secure.
+    @Test
+    fun listIsKeptOutOfScreenshotsAndRecents() {
+        openList()
+        assertEquals(true, isSecure())
+        tap(R.string.done)
+        waitFor(R.string.pick_intro)
+        assertEquals(false, isSecure())
+    }
+
+    private fun isSecure(): Boolean {
+        var secure = false
+        rule.activityRule.scenario.onActivity {
+            secure = it.window.attributes.flags and android.view.WindowManager.LayoutParams.FLAG_SECURE != 0
+        }
+        return secure
+    }
+
     @Test
     fun noScreenLockExplains() {
         clearPin()

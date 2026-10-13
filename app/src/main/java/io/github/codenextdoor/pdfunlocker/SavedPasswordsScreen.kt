@@ -1,5 +1,7 @@
 package io.github.codenextdoor.pdfunlocker
 
+import android.view.WindowManager
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +20,7 @@ import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +44,13 @@ fun SavedPasswordsScreen(
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Keeps the passwords out of screenshots, screen sharing and the Recents thumbnail (taken before
+    // onStop closes the list).
+    val window = (LocalActivity.current)?.window
+    DisposableEffect(window) {
+        window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        onDispose { window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
+    }
     var confirmDelete by remember { mutableStateOf<String?>(null) }
     Column(
         modifier
