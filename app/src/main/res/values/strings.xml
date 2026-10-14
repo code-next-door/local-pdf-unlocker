@@ -3,6 +3,7 @@
     <string name="pick_intro">Pick a PDF to save an unlocked copy of it. Passwords that work are saved encrypted on this phone, so similar PDFs open by themselves. Nothing leaves your phone.</string>
     <string name="pick_button">Pick a PDF</string>
     <string name="error_not_pdf">This file couldn\'t be opened as a PDF. Pick another file.</string>
+    <string name="error_reopen">Something went wrong reading this PDF. Pick it again.</string>
     <string name="error_pick_again">The app was closed while saving. Pick the PDF again.</string>
     <string name="working">Working…</string>
     <string name="password_intro">This PDF is locked. Enter its password.</string>

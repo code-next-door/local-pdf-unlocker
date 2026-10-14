@@ -1,9 +1,7 @@
 package io.github.codenextdoor.pdfunlocker
 
 import android.app.Application
-import android.graphics.pdf.PdfRenderer
 import android.net.Uri
-import android.os.ParcelFileDescriptor
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import androidx.annotation.StringRes
@@ -33,11 +31,15 @@ sealed interface UnlockState {
 }
 
 /**
- * Holds the step and the opened PDF, which must survive rotation but can't go into saved state. After the
- * app is closed in the background it starts over: the password is never kept anywhere.
+ * Holds the step and the connection to the sandboxed helper that has the PDF open, which must survive
+ * rotation but can't go into saved state. After the app is closed in the background it starts over.
  */
-class UnlockViewModel(app: Application, private val store: PasswordStore) : AndroidViewModel(app) {
-    constructor(app: Application) : this(app, PasswordStore.forApp(app))
+class UnlockViewModel(
+    app: Application,
+    private val store: PasswordStore,
+    private val pdf: PdfClient,
+) : AndroidViewModel(app) {
+    constructor(app: Application) : this(app, PasswordStore.forApp(app), PdfClient(app))
 
     var state: UnlockState by mutableStateOf(UnlockState.Pick())
         private set
@@ -55,11 +57,14 @@ class UnlockViewModel(app: Application, private val store: PasswordStore) : Andr
      * streams some apps hand over, and the original is never read again once copied.
      */
     private var copy: File? = null
-    private var renderer: PdfRenderer? = null
+
+    /** Whether the sandboxed helper has the PDF open (unlocked), ready to save. */
+    private var opened = false
     private val resolver get() = getApplication<Application>().contentResolver
     private val copiesDir = File(app.cacheDir, "pdfs")
 
     init {
+        pdf.bind()
         // Copies left by a crash or by Android closing the app; only once per process, so a second window
         // (e.g. "Open with" from Gmail) doesn't delete the first one's copy.
         if (!staleCopiesCleared) {
@@ -80,13 +85,13 @@ class UnlockViewModel(app: Application, private val store: PasswordStore) : Andr
                 return@launch
             }
             copy = file
-            state = when (val result = open(file, password = null)) {
-                is OpenResult.Opened -> {
-                    renderer = result.renderer
+            state = when (pdf.open(file, password = null)) {
+                PdfStatus.NOT_LOCKED, PdfStatus.UNLOCKED -> {
+                    opened = true
                     UnlockState.ReadyToSave(notLocked = true)
                 }
-                OpenResult.NeedsPassword, OpenResult.WrongPassword -> tryStoredPasswords(file)
-                OpenResult.NotAPdf -> UnlockState.Pick(R.string.error_not_pdf)
+                PdfStatus.NEEDS_PASSWORD, PdfStatus.WRONG_PASSWORD -> tryStoredPasswords(file)
+                PdfStatus.NOT_A_PDF -> UnlockState.Pick(R.string.error_not_pdf)
             }
         }
     }
@@ -97,14 +102,14 @@ class UnlockViewModel(app: Application, private val store: PasswordStore) : Andr
         if (saved.isEmpty()) return UnlockState.Password()
         state = UnlockState.Working(R.string.trying_saved)
         for (password in saved) {
-            when (val result = open(file, password)) {
-                is OpenResult.Opened -> {
-                    renderer = result.renderer
+            when (pdf.open(file, password)) {
+                PdfStatus.NOT_LOCKED, PdfStatus.UNLOCKED -> {
+                    opened = true
                     rememberPassword(password)
                     return UnlockState.ReadyToSave(notLocked = false, unlockedWithSaved = true)
                 }
-                OpenResult.NotAPdf -> return UnlockState.Pick(R.string.error_not_pdf)
-                else -> Unit
+                PdfStatus.NOT_A_PDF -> return UnlockState.Pick(R.string.error_not_pdf)
+                PdfStatus.NEEDS_PASSWORD, PdfStatus.WRONG_PASSWORD -> Unit
             }
         }
         return UnlockState.Password()
@@ -122,14 +127,14 @@ class UnlockViewModel(app: Application, private val store: PasswordStore) : Andr
         val file = copy ?: run { state = UnlockState.Pick(R.string.error_pick_again); return }
         state = UnlockState.Working()
         viewModelScope.launch {
-            state = when (val result = open(file, password)) {
-                is OpenResult.Opened -> {
-                    renderer = result.renderer
+            state = when (pdf.open(file, password)) {
+                PdfStatus.NOT_LOCKED, PdfStatus.UNLOCKED -> {
+                    opened = true
                     rememberPassword(password)
                     UnlockState.ReadyToSave(notLocked = false)
                 }
-                OpenResult.NeedsPassword, OpenResult.WrongPassword -> UnlockState.Password(wrong = true)
-                OpenResult.NotAPdf -> UnlockState.Pick(R.string.error_not_pdf)
+                PdfStatus.NEEDS_PASSWORD, PdfStatus.WRONG_PASSWORD -> UnlockState.Password(wrong = true)
+                PdfStatus.NOT_A_PDF -> UnlockState.Pick(R.string.error_not_pdf)
             }
         }
     }
@@ -137,22 +142,36 @@ class UnlockViewModel(app: Application, private val store: PasswordStore) : Andr
     /** [uri] null: the "Save as" dialog was cancelled. */
     fun onSaveTo(uri: Uri?) {
         if (uri == null) return
-        val opened = renderer ?: run { state = UnlockState.Pick(R.string.error_pick_again); return }
+        if (!opened) {
+            state = UnlockState.Pick(R.string.error_pick_again)
+            return
+        }
         val ready = state as? UnlockState.ReadyToSave ?: UnlockState.ReadyToSave(notLocked = false)
         state = UnlockState.Working()
         viewModelScope.launch {
-            state = try {
-                withContext(Dispatchers.IO) {
-                    val out = resolver.openFileDescriptor(uri, "wt") ?: throw FileNotFoundException()
-                    out.use { PdfUnlocker.save(opened, it) }
-                }
-                endSession()
-                UnlockState.Saved
+            val result = try {
+                val out = withContext(Dispatchers.IO) { resolver.openFileDescriptor(uri, "wt") }
+                    ?: throw FileNotFoundException()
+                pdf.save(out)
             } catch (_: Exception) {
-                // IOException, SecurityException or IllegalArgumentException from the provider. Don't
-                // leave a broken copy behind (file:// test Uris aren't documents: nothing to delete there).
+                // IOException, SecurityException or IllegalArgumentException from the provider.
+                SaveResult.FAILED
+            }
+            if (result != SaveResult.SAVED) {
+                // Don't leave a broken copy behind (file:// test Uris aren't documents: nothing to delete).
                 withContext(Dispatchers.IO) { runCatching { DocumentsContract.deleteDocument(resolver, uri) } }
-                ready.copy(saveFailed = true)
+            }
+            state = when (result) {
+                SaveResult.SAVED -> {
+                    endSession()
+                    UnlockState.Saved
+                }
+                SaveResult.FAILED -> ready.copy(saveFailed = true)
+                // The helper was restarted and lost the open PDF.
+                SaveResult.NO_DOCUMENT -> {
+                    endSession()
+                    UnlockState.Pick(R.string.error_reopen)
+                }
             }
         }
     }
@@ -205,12 +224,15 @@ class UnlockViewModel(app: Application, private val store: PasswordStore) : Andr
         state = UnlockState.Pick()
     }
 
-    override fun onCleared() = endSession()
+    override fun onCleared() {
+        endSession()
+        pdf.unbind()
+    }
 
-    /** Closes the opened PDF and deletes the private copy. */
+    /** Closes the opened PDF in the helper and deletes the private copy. */
     private fun endSession() {
-        renderer?.close()
-        renderer = null
+        if (opened) pdf.close()
+        opened = false
         copy?.delete()
         copy = null
     }
@@ -227,17 +249,6 @@ class UnlockViewModel(app: Application, private val store: PasswordStore) : Andr
             file.delete()
             null
         }
-    }
-
-    private suspend fun open(file: File, password: String?): OpenResult {
-        val pfd = withContext(Dispatchers.IO) {
-            try {
-                ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-            } catch (_: Exception) {
-                null
-            }
-        } ?: return OpenResult.NotAPdf
-        return PdfUnlocker.open(pfd, password)
     }
 
     private suspend fun displayName(uri: Uri): String? = withContext(Dispatchers.IO) {

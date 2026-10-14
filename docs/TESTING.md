@@ -41,6 +41,13 @@ This app keeps no data, so `connectedDebugAndroidTest` uninstalling it afterward
   clear it by hand: `adb shell locksettings clear --old 1357`.
 - `PasswordStoreTest`/`SecretBoxTest` use their own file and Keystore alias and delete both afterwards.
 
+## The sandboxed helper
+- `PdfService` runs in an isolated process (`:pdf`); the app talks to it through `PdfClient` (AIDL
+  `IPdfService`). `PdfServiceTest` proves it's isolated (`Process.isIsolated()`) and answers like `PdfUnlocker`;
+  every flow test goes through it.
+- Not tested: the helper dying mid-operation (killing an isolated uid needs root). Code path: open → "couldn't
+  be opened"; save → "Something went wrong reading this PDF. Pick it again."
+
 ## Private copies and streams
 - The app copies every incoming PDF to `cacheDir/pdfs/` and reads only that copy; tests check the folder is
   empty after saving and after Cancel.

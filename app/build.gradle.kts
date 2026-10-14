@@ -61,6 +61,8 @@ android {
 
     buildFeatures {
         compose = true
+        // IPdfService: the app talks to the sandboxed PDF helper (PdfService) through it.
+        aidl = true
     }
 
     lint {

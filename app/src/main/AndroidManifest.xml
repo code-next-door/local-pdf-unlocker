@@ -33,6 +33,12 @@
                 <data android:mimeType="application/pdf" />
             </intent-filter>
         </activity>
+        <!-- Reads PDFs in a sandbox (isolated process: no access to the app's files or Keystore). -->
+        <service
+            android:name=".PdfService"
+            android:exported="false"
+            android:isolatedProcess="true"
+            android:process=":pdf" />
     </application>
 
 </manifest>
