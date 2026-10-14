@@ -8,21 +8,28 @@ import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import android.os.RemoteException
 import java.io.File
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 enum class PdfStatus { NOT_LOCKED, UNLOCKED, NEEDS_PASSWORD, WRONG_PASSWORD, NOT_A_PDF }
 
 /** NO_DOCUMENT: nothing is open in the helper (e.g. Android restarted it), so the PDF must be picked again. */
 enum class SaveResult { SAVED, FAILED, NO_DOCUMENT }
 
-/** The app's side of the sandboxed helper (PdfService). Calls run on IO; bind() once, unbind() at the end. */
+/**
+ * The app's side of the sandboxed helper (PdfService). Calls run on IO; bind() once, unbind() at the end.
+ * Each client gets its own helper process, so two windows (launcher + "Open with") never share a document.
+ */
 class PdfClient(context: Context) {
     private val context = context.applicationContext
     private val service = MutableStateFlow<IPdfService?>(null)
+    // Letters and digits only (Android rejects other characters in an instance name).
+    private val instance = UUID.randomUUID().toString().replace("-", "")
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, binder: IBinder) {
@@ -33,10 +40,23 @@ class PdfClient(context: Context) {
         override fun onServiceDisconnected(name: ComponentName) {
             service.value = null
         }
+
+        // Android won't reconnect this binding (e.g. the helper kept crashing): start a new one.
+        override fun onBindingDied(name: ComponentName) {
+            service.value = null
+            context.unbindService(this)
+            bind()
+        }
     }
 
     fun bind() {
-        context.bindService(Intent(context, PdfService::class.java), connection, Context.BIND_AUTO_CREATE)
+        context.bindIsolatedService(
+            Intent(context, PdfService::class.java),
+            Context.BIND_AUTO_CREATE,
+            instance,
+            context.mainExecutor,
+            connection,
+        )
     }
 
     fun unbind() = context.unbindService(connection)
@@ -75,5 +95,12 @@ class PdfClient(context: Context) {
 
     suspend fun isSandboxed(): Boolean = withContext(Dispatchers.IO) { connected().isSandboxed() }
 
-    private suspend fun connected(): IPdfService = service.filterNotNull().first()
+    // Not connected within the timeout: treated like a helper that died (callers catch RemoteException).
+    private suspend fun connected(): IPdfService =
+        withTimeoutOrNull(CONNECT_TIMEOUT_MS) { service.filterNotNull().first() }
+            ?: throw RemoteException("The PDF helper isn't running")
+
+    private companion object {
+        const val CONNECT_TIMEOUT_MS = 10_000L
+    }
 }

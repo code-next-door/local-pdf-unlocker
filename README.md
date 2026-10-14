@@ -11,7 +11,8 @@ choose **PDF Unlocker** under "Open with", or share the PDF to it. The copy can 
 
 **Private by design:** everything happens on your phone. The app has no internet permission, so your
 document and its password can't leave the device. PDFs are read by a sandboxed helper (an isolated process
-with no access to the app's files or saved passwords), so even a booby-trapped PDF couldn't reach them.
+with no access to the app's files, the saved-password list or the phone's key store), so a booby-trapped PDF
+would be stuck there. It does see the passwords tried on that PDF, including saved ones the app tries.
 
 **Saved passwords:** a password that unlocks a PDF is saved, encrypted with a key kept in your phone's
 security hardware, so the next PDF with the same password (say, next month's bank statement) opens by

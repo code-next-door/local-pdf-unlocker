@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -50,6 +51,30 @@ class PdfServiceTest {
     @Test fun saveWithoutAnOpenPdfSaysSo() = runBlocking {
         val out = File(context.cacheDir, "service-none.pdf").apply { delete() }
         assertEquals(SaveResult.NO_DOCUMENT, client.save(writable(out)))
+    }
+
+    // Two windows (launcher + "Open with" from another app) each have a PdfClient: each needs its own
+    // open document, or Save in one writes the other's PDF.
+    @Test fun twoClientsKeepTheirOwnDocuments() = runBlocking {
+        val other = PdfClient(context).apply { bind() }
+        try {
+            assertEquals(PdfStatus.UNLOCKED, client.open(asset("user-locked.pdf"), "user123"))
+            assertEquals(PdfStatus.UNLOCKED, other.open(asset("user-locked-big.pdf"), "user123"))
+            val out = File(context.cacheDir, "service-first.pdf").apply { delete() }
+            assertEquals(SaveResult.SAVED, client.save(writable(out)))
+            PdfRenderer(ParcelFileDescriptor.open(out, ParcelFileDescriptor.MODE_READ_ONLY)).use {
+                assertEquals(2, it.pageCount)
+            }
+        } finally {
+            other.unbind()
+        }
+    }
+
+    // If the helper never connects, calls give up instead of spinning forever.
+    @Test fun unconnectedClientGivesUp() = runBlocking {
+        val never = PdfClient(context) // not bound
+        val result = withTimeoutOrNull(30_000) { never.open(asset("plain.pdf"), null) }
+        assertEquals(PdfStatus.NOT_A_PDF, result)
     }
 
     private fun asset(name: String) = File(context.cacheDir, "service-$name").apply {

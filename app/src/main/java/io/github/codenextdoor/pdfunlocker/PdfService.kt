@@ -11,7 +11,8 @@ import kotlinx.coroutines.runBlocking
 /**
  * Reads PDFs in an isolated process (no access to the app's files, Keystore or anything else), as
  * PdfRenderer's documentation recommends for files from untrusted sources: a malicious PDF that exploited
- * the PDF engine would be stuck here, away from the saved passwords. Gets only descriptors and a password.
+ * the PDF engine would be stuck here, away from the app's files and the Keystore. It gets only descriptors
+ * and the passwords tried on that PDF (including saved ones during auto-try).
  */
 class PdfService : Service() {
     private var renderer: PdfRenderer? = null
